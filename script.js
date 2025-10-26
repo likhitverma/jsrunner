@@ -7,6 +7,7 @@ require.config({
 require(["vs/editor/editor.main"], function () {
   // 🎨 Define Dark Modern Theme
   let isLightTheme = false;
+  let statusDiv = null;
   monaco.editor.defineTheme("dark-modern", {
     base: "vs-dark",
     inherit: true,
@@ -55,7 +56,7 @@ require(["vs/editor/editor.main"], function () {
     isLightTheme = !isLightTheme;
     editor = monaco.editor.create(
       document.getElementById("editor"),
-      getMonacoConfig({ theme: isLightTheme ? "vs-light" : "vs-dark" })
+      getMonacoConfig({ theme: isLightTheme ? "vs-light" : "dark-modern" })
     );
   }
 
@@ -70,6 +71,20 @@ require(["vs/editor/editor.main"], function () {
     div.textContent = message;
     consoleDiv.appendChild(div);
     consoleDiv.scrollTop = consoleDiv.scrollHeight;
+  }
+
+  function logStatus(message) {
+    // Remove previous status if present
+    const prevStatus = consoleDiv.querySelector(".status");
+    if (prevStatus) consoleDiv.removeChild(prevStatus);
+
+    // Add new status element
+    statusDiv = document.createElement("div");
+    statusDiv.className = "log status";
+    statusDiv.textContent = message;
+    consoleDiv.appendChild(statusDiv);
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    return statusDiv;
   }
 
   // Capture console.log
@@ -89,6 +104,9 @@ require(["vs/editor/editor.main"], function () {
         return String(arg);
       })
       .join(" ");
+    if (consoleDiv.contains(statusDiv)) {
+      consoleDiv.removeChild(statusDiv);
+    }
     logToConsole(formatted, "log");
   };
 
@@ -96,9 +114,14 @@ require(["vs/editor/editor.main"], function () {
   function runCode() {
     consoleDiv.innerHTML = "";
     const code = editor.getValue();
+    // Show and track status
+    statusDiv = logStatus("🕒 Execution in progress...");
     try {
       new Function(code)();
     } catch (err) {
+      if (consoleDiv.contains(statusDiv)) {
+        consoleDiv.removeChild(statusDiv);
+      }
       const match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
       if (match) {
         const line = parseInt(match[1]);
@@ -215,4 +238,3 @@ require(["vs/editor/editor.main"], function () {
   });
   window.addEventListener("touchend", stopResize);
 });
-
