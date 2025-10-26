@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Essential Meta Tags -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="theme-color" content="#5F7FFF" />
+
+    <title>Online JS Compiler - Online JS IDE for Learning & Practice</title>
+
+    <!-- Primary Meta Tags -->
+    <meta
+      name="description"
+      content="Practice JavaScript coding online with a lightweight, browser-based JavaScript editor. Format your code, view console output, and learn JS efficiently."
+    />
+    <meta
+      name="keywords"
+      content="My Code Run, my code run, mycoderun, mycoderun.com, JavaScript editor, js online editor, javascript online editor, js compiler, online JS IDE, JavaScript practice, learn JavaScript, code editor, browser IDE, JS coding practice, Online js compiler, js editor, JS editor, practice js, practice codeing, practice javascript"
+    />
+    <meta name="author" content="Likhit Verma" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="JavaScript Editor - Online JS IDE for Learning & Practice"
+    />
+    <meta
+      property="og:description"
+      content="Practice JavaScript coding online with a lightweight, browser-based JavaScript editor. Format your code, view console output, and learn JS efficiently."
+    />
+    <meta property="og:image" content="/images/favicon.png" />
+    <meta property="og:url" content="https://yourdomain.com" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:title"
+      content="JavaScript Editor - Online JS IDE for Learning & Practice"
+    />
+    <meta
+      property="twitter:description"
+      content="Practice JavaScript coding online with a lightweight, browser-based JavaScript editor. Format your code, view console output, and learn JS efficiently."
+    />
+    <meta property="twitter:image" content="/favicon.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="/images/favicon.png" type="image/png" />
+
+    <!-- Roboto Mono Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Stylesheets -->
+    <link href="/style.css" rel="stylesheet" />
+
+    <!-- Prettier (for formatting) -->
+    <script src="https://unpkg.com/prettier@2.8.8/standalone.js"></script>
+    <script src="https://unpkg.com/prettier@2.8.8/parser-babel.js"></script>
+
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+
+    <!-- Font Awesome & External Scripts -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+
+    <!-- Application Script -->
+    <script src="/script.js" defer></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="main-content">
+        <div class="editor-section">
+          <div class="editor-header">
+            <div class="toolbar">
+              <div class="toolbar-left">
+                <img src="/images/no-bg-logo.png" alt="Logo" />
+                <h1 class="app-title">JS RUNNER</h1>
+              </div>
+              <div class="toolbar-right">
+                <button id="runBtn" title="▶ To Run Code (Ctrl + Enter)">
+                  <i class="fa-solid fa-play fa-beat"></i>
+                </button>
+                <button id="formatBtn" title="To Format Code (Ctrl + `)">
+                  <i class="fa-duotone fa-solid fa-code fa-beat"></i>
+                </button>
+                <button id="fullScreenBtn" title="For Fullscreen Mode">
+                  <i class="fa-solid fa-expand fa-beat"></i>
+                </button>
+                <button id="darkModeBtn" title="▶ To Run Code (Ctrl + Enter)">
+                  <i
+                    class="fa-solid fa-moon fa-rotate-by fa-lg"
+                    style="--fa-rotate-angle: -25deg"
+                  ></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="editor"></div>
+        </div>
+
+        <div id="divider"></div>
+
+        <div class="console-container" id="consoleContainer">
+          <div class="console-header">
+            <span>Console</span>
+            <button class="clear-btn" id="clearBtn">Clear</button>
+          </div>
+          <div id="console"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
