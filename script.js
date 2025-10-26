@@ -32,7 +32,7 @@ require(["vs/editor/editor.main"], function () {
 
   function getMonacoConfig(config) {
     const monacoConfig = {
-      value: `// Welcome to JavaScript Editor!\n// Press Ctrl+Enter to execute.\n// Click </> to format your code.\n\nconsole.log("Hello, Monaco Editor!");`,
+      value: `// Welcome to the JS Runner! (JavaScript Compiler)\n// Press Ctrl+Enter to execute.\n// Click </> to format your code.\n\nconsole.log("Hello, I am JS Runner!");`,
       language: "javascript",
       theme: config.theme,
       fontSize: 15,
@@ -215,3 +215,4 @@ require(["vs/editor/editor.main"], function () {
   });
   window.addEventListener("touchend", stopResize);
 });
+
