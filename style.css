@@ -185,6 +185,21 @@ button:hover {
   font-size: 11px;
 }
 
+/* 🔴 Highlighted error line background */
+.errorLineDecoration {
+  background-color: rgba(255, 99, 71, 0.2) !important; /* light red overlay */
+  border-left: 3px solid #ff4d4f !important;
+}
+
+/* 🚨 Small red marker in the left margin */
+.monaco-editor .margin .errorGlyph {
+  background-color: #ff4d4f !important;
+  border-radius: 50%;
+  width: 8px !important;
+  height: 8px !important;
+  margin-left: 3px;
+}
+
 /* ----------------- MOBILE RESPONSIVE ----------------- */
 @media (max-width: 768px) {
   .main-content {
@@ -231,3 +246,4 @@ button:hover {
 ::-webkit-scrollbar-corner {
   background-color: #111;
 }
+
