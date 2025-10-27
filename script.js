@@ -4,10 +4,48 @@ require.config({
   },
 });
 
+
 require(["vs/editor/editor.main"], function () {
   // 🎨 Define Dark Modern Theme
   let isLightTheme = false;
   let statusDiv = null;
+
+  // Register custom JS tokenizer to highlight function names & calls
+  monaco.languages.setMonarchTokensProvider("javascript", {
+    tokenizer: {
+      root: [
+        [/[a-zA-Z_$][\w$]*(?=\s*\()/, "function.call"], // highlight function calls
+        [/[A-Z][\w\$]*/, "type.identifier"], // class names
+        { include: "@whitespace" },
+        [/\d+/, "number"],
+        [/"([^"\\]|\\.)*$/, "string.invalid"],
+        [/'([^'\\]|\\.)*$/, "string.invalid"],
+        [/"/, "string", "@string_double"],
+        [/'/, "string", "@string_single"],
+        [/[{}()\[\]]/, "@brackets"],
+        [/[;,.]/, "delimiter"],
+        [
+          /\b(function|return|const|let|var|if|else|for|while|async|await|try|catch|throw|class|extends|new|import|export|default|from|as)\b/,
+          "keyword",
+        ],
+      ],
+      string_double: [
+        [/[^\\"]+/, "string"],
+        [/\\./, "string.escape"],
+        [/"/, "string", "@pop"],
+      ],
+      string_single: [
+        [/[^\\']+/, "string"],
+        [/\\./, "string.escape"],
+        [/'/, "string", "@pop"],
+      ],
+      whitespace: [
+        [/[ \t\r\n]+/, "white"],
+        [/\/\/.*$/, "comment"],
+      ],
+    },
+  });
+
   monaco.editor.defineTheme("dark-modern", {
     base: "vs-dark",
     inherit: true,
@@ -17,10 +55,8 @@ require(["vs/editor/editor.main"], function () {
       { token: "keyword", foreground: "C586C0" },
       { token: "number", foreground: "B5CEA8" },
       { token: "string", foreground: "CE9178" },
-      { token: "type", foreground: "4EC9B0" },
-      { token: "function", foreground: "DCDCAA" },
-      { token: "variable", foreground: "9CDCFE" },
-      { token: "methods", foreground: "264F78" },
+      { token: "type.identifier", foreground: "4EC9B0" },
+      { token: "function.call", foreground: "FFBB00FF" },
     ],
     colors: {
       "editor.background": "#1e1e1e",
@@ -110,22 +146,40 @@ require(["vs/editor/editor.main"], function () {
     logToConsole(formatted, "log");
   };
 
+  // 🧠 Track error decorations
+  let errorDecorations = [];
+
   // Run Code
-  function runCode() {
+  async function runCode() {
     consoleDiv.innerHTML = "";
     const code = editor.getValue();
-    // Show and track status
+    // Remove previous error highlights before new run
+    errorDecorations = editor.deltaDecorations(errorDecorations, []);
+
     statusDiv = logStatus("🕒 Execution in progress...");
+
     try {
-      new Function(code)();
+      const asyncWrapper = `(async () => { ${code} })()`;
+      await eval(asyncWrapper);
     } catch (err) {
-      if (consoleDiv.contains(statusDiv)) {
+      if (statusDiv && consoleDiv.contains(statusDiv)) {
         consoleDiv.removeChild(statusDiv);
       }
       const match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
       if (match) {
         const line = parseInt(match[1]);
         logToConsole(`❌ Error at line ${line}: ${err.message}`, "error");
+        // 🩸 Highlight the error line in Monaco Editor
+        errorDecorations = editor.deltaDecorations(errorDecorations, [
+          {
+            range: new monaco.Range(line, 1, line, 1),
+            options: {
+              isWholeLine: true,
+              className: "errorLineDecoration",
+              glyphMarginClassName: "errorGlyph",
+            },
+          },
+        ]);
       } else {
         logToConsole(`❌ ${err.message}`, "error");
       }
@@ -134,6 +188,38 @@ require(["vs/editor/editor.main"], function () {
 
   document.getElementById("runBtn").onclick = runCode;
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+
+  // 🛡️ Catch global synchronous errors
+  window.onerror = function (message, source, lineno, colno, error) {
+    if (statusDiv && consoleDiv.contains(statusDiv)) {
+      consoleDiv.removeChild(statusDiv);
+    }
+    logToConsole(`❌ Error at line ${lineno}: ${message}`, "error");
+    return true; // prevent default browser logging
+  };
+
+  // 🛡️ Catch global async (Promise) errors
+  window.onunhandledrejection = function (event) {
+    if (statusDiv && consoleDiv.contains(statusDiv)) {
+      consoleDiv.removeChild(statusDiv);
+    }
+    const error = event.reason;
+    if (error && error.stack) {
+      const match = error.stack.match(/<anonymous>:(\d+):(\d+)/);
+      if (match) {
+        const line = parseInt(match[1]);
+        logToConsole(
+          `❌ Async Error at line ${line}: ${error.message}`,
+          "error"
+        );
+      } else {
+        logToConsole(`❌ Async Error: ${error.message || error}`, "error");
+      }
+    } else {
+      logToConsole(`❌ Async Error: ${String(error)}`, "error");
+    }
+    return true; // prevent default browser logging
+  };
 
   // Format Code using Prettier
   function formatCode() {
