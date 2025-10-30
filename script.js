@@ -4,11 +4,11 @@ require.config({
   },
 });
 
-
 require(["vs/editor/editor.main"], function () {
   // 🎨 Define Dark Modern Theme
   let isLightTheme = false;
   let statusDiv = null;
+  const defaultEditorValue = `// Welcome to the JS Runner! (JavaScript Compiler)\n// Press Ctrl+Enter to execute.\n// Click </> to format your code.\n\nif (true) {\n  console.log("Hello, I am JS Runner!");\n}`;
 
   // Register custom JS tokenizer to highlight function names & calls
   monaco.languages.setMonarchTokensProvider("javascript", {
@@ -17,6 +17,7 @@ require(["vs/editor/editor.main"], function () {
         [/[a-zA-Z_$][\w$]*(?=\s*\()/, "function.call"], // highlight function calls
         [/[A-Z][\w\$]*/, "type.identifier"], // class names
         { include: "@whitespace" },
+        [/\b(true|false)\b/, "boolean"], // ✅ highlight booleans
         [/\d+/, "number"],
         [/"([^"\\]|\\.)*$/, "string.invalid"],
         [/'([^'\\]|\\.)*$/, "string.invalid"],
@@ -57,6 +58,7 @@ require(["vs/editor/editor.main"], function () {
       { token: "string", foreground: "CE9178" },
       { token: "type.identifier", foreground: "4EC9B0" },
       { token: "function.call", foreground: "FFBB00FF" },
+      { token: "boolean", foreground: "4FC1FF" }, // ✅ added boolean color
     ],
     colors: {
       "editor.background": "#1e1e1e",
@@ -69,7 +71,7 @@ require(["vs/editor/editor.main"], function () {
 
   function getMonacoConfig(config) {
     const monacoConfig = {
-      value: `// Welcome to the JS Runner! (JavaScript Compiler)\n// Press Ctrl+Enter to execute.\n// Click </> to format your code.\n\nconsole.log("Hello, I am JS Runner!");`,
+      value: defaultEditorValue,
       language: "javascript",
       theme: config.theme,
       fontSize: 15,
@@ -188,6 +190,13 @@ require(["vs/editor/editor.main"], function () {
 
   document.getElementById("runBtn").onclick = runCode;
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+
+  function resetEditor() {
+    consoleDiv.innerHTML = "";
+    editor.setValue(defaultEditorValue);
+  }
+
+  document.getElementById("resetBtn").onclick = resetEditor;
 
   // 🛡️ Catch global synchronous errors
   window.onerror = function (message, source, lineno, colno, error) {
