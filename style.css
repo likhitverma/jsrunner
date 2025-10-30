@@ -94,6 +94,10 @@ button:hover {
   background: #0b84d4;
 }
 
+#runBtn {
+  background: #0b84d4;
+}
+
 @media (max-width: 480px) {
   .toolbar-left h1 {
     font-size: 14px;
@@ -246,4 +250,3 @@ button:hover {
 ::-webkit-scrollbar-corner {
   background-color: #111;
 }
-
