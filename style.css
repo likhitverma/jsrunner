@@ -204,6 +204,52 @@ button:hover {
   margin-left: 3px;
 }
 
+/* 🌍 Footer Styling */
+.site-footer {
+  background: #181818;
+  color: #8f8f8f;
+  font-family: "Lexend Deca", sans-serif;
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 10px;
+  border-top: 1px solid #333;
+  position: sticky;
+  bottom: 0px;
+  width: 100%;
+  z-index: 99999;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer a {
+  color: #0b84d4;
+  text-decoration: none;
+  margin: 0 5px;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
+.site-footer i.fa-heart {
+  color: #ff5555;
+  margin: 0 3px;
+}
+
+/* Responsive footer text for small screens */
+@media (max-width: 480px) {
+  .site-footer {
+    font-size: 12px;
+    padding: 10px 5px;
+  }
+
+  .site-footer p {
+    line-height: 1.4;
+  }
+}
+
 /* ----------------- MOBILE RESPONSIVE ----------------- */
 @media (max-width: 768px) {
   .main-content {
