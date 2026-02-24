@@ -91,23 +91,28 @@ require(["vs/editor/editor.main"], function () {
 
   // Restore code saved from a previous session
   const savedCode = localStorage.getItem("jsrunner_code");
-  if (savedCode !== null) {
+  if (savedCode !== null && savedCode !== "") {
     editor.setValue(savedCode);
   }
 
   // Auto-save code to localStorage on every keystroke.
-  // Must be called again after each editor recreation (e.g. theme toggle).
+  // Tracks the disposable so exactly one listener exists at a time — prevents
+  // accumulation across theme toggles where the editor is recreated.
+  let _changeListenerDisposable = null;
   function attachChangeListener() {
-    editor.onDidChangeModelContent(() => {
+    if (_changeListenerDisposable) _changeListenerDisposable.dispose();
+    _changeListenerDisposable = editor.onDidChangeModelContent(() => {
       localStorage.setItem("jsrunner_code", editor.getValue());
     });
   }
   attachChangeListener();
 
-  // Toggle Dark Mode Theme — preserves code and re-attaches keyboard shortcuts
+  // Toggle Dark Mode Theme — disposes old editor to prevent memory leak,
+  // preserves current code, and re-attaches keyboard shortcuts on the new instance.
   function toggleDarkMode() {
     const currentCode = editor.getValue();
     isLightTheme = !isLightTheme;
+    editor.dispose(); // free memory — old DOM nodes and event bindings are released
     editor = monaco.editor.create(
       document.getElementById("editor"),
       getMonacoConfig({ theme: isLightTheme ? "vs-light" : "dark-modern" })
@@ -273,7 +278,7 @@ require(["vs/editor/editor.main"], function () {
       const timer = setTimeout(() => {
         finish();
         if (statusDiv && consoleDiv.contains(statusDiv)) consoleDiv.removeChild(statusDiv);
-        logToConsole("⏱️ Execution timed out (5s). Check for infinite loops.", "error");
+        logToConsole("⏱️ Execution timed out after 5 seconds. (Tip: check for infinite loops or slow operations)", "error");
       }, EXECUTION_TIMEOUT_MS);
 
       worker.onmessage = function (e) {
@@ -328,7 +333,7 @@ require(["vs/editor/editor.main"], function () {
   document.getElementById("resetBtn").onclick = resetEditor;
 
   // 🛡️ Catch global synchronous errors
-  window.onerror = function (message, source, lineno, colno, error) {
+  window.onerror = function (message, _source, lineno, _colno, _error) {
     // ResizeObserver loop is a browser-internal notification, not user code error — ignore it
     if (typeof message === "string" && message.includes("ResizeObserver")) return true;
     if (statusDiv && consoleDiv.contains(statusDiv)) {
@@ -371,9 +376,14 @@ require(["vs/editor/editor.main"], function () {
   function formatCode() {
     const code = editor.getValue();
     try {
+      if (typeof prettier === "undefined") {
+        logToConsole("⚠️ Prettier not loaded. Check your internet connection.", "error");
+        return;
+      }
       const formatted = prettier.format(code, {
         parser: "babel",
-        plugins: prettierPlugins,
+        // prettierPlugins is a global populated by the CDN parser-babel.js script
+        plugins: typeof prettierPlugins !== "undefined" ? prettierPlugins : [],
       });
       logToConsole("✅ Code formatted!");
       editor.setValue(formatted);
@@ -447,7 +457,7 @@ require(["vs/editor/editor.main"], function () {
       const minHeight = 100;
       if (editorHeight > minHeight && editorHeight < totalHeight - minHeight) {
         editorDiv.style.height = editorHeight + "px";
-        consoleContainer.style.height = totalHeight - editorHeight - 6 + "px";
+        consoleContainer.style.height = totalHeight - editorHeight - 10 + "px";
         editorDiv.style.width = "100%";
         consoleContainer.style.width = "100%";
         // Defer layout to next frame to avoid ResizeObserver loop errors
@@ -456,11 +466,12 @@ require(["vs/editor/editor.main"], function () {
     } else {
       // Desktop: horizontal resize
       const totalWidth = main.offsetWidth;
-      const editorWidth = clientX;
+      // Subtract container's left offset so resize works correctly if page has margins
+      const editorWidth = clientX - main.getBoundingClientRect().left;
       const minWidth = 200;
       if (editorWidth > minWidth && editorWidth < totalWidth - minWidth) {
         editorDiv.style.width = editorWidth + "px";
-        consoleContainer.style.width = totalWidth - editorWidth - 6 + "px";
+        consoleContainer.style.width = totalWidth - editorWidth - 8 + "px";
         editorDiv.style.height = "100%";
         consoleContainer.style.height = "100%";
         scheduleEditorLayout();

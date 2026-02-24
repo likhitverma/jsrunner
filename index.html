@@ -5,51 +5,56 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="theme-color" content="#5F7FFF" />
+    <meta name="theme-color" content="#1e1e1e" />
     <meta name="robots" content="index, follow" />
-    <meta name="copyright" content="© 2025 JS Runner by Likhit Verma" />
+    <meta name="copyright" content="© 2026 JS Runner by Likhit Verma" />
+    <meta name="application-name" content="JS Runner" />
+    <meta name="language" content="en" />
+    <meta name="revisit-after" content="7 days" />
     <link rel="canonical" href="https://www.jsrunner.com/" />
 
-    <title>
-      JS Runner | Online JS Compiler - Fastest JavaScript IDE for Learning &
-      Practice
-    </title>
+    <title>JS Runner - Free Online JavaScript Compiler &amp; Editor</title>
 
     <!-- SEO Meta Tags -->
     <meta
       name="description"
-      content="Practice JavaScript coding in JS Runner which is a online lightweight, browser-based JavaScript editor. Format your code, view console output, and learn JS efficiently."
+      content="Free online JavaScript compiler and editor. Write and run JS code instantly in your browser with syntax highlighting, live console output, error detection, and Prettier formatting. No install needed."
     />
     <meta
       name="keywords"
-      content="JS Runner, JSRunner, js runs, js runner, javascript runner, js compiler, online compiler, My Code Run, my code run, mycoderun, mycoderun.com, JavaScript editor, js online editor, javascript online editor, js compiler, online JS IDE, JavaScript practice, learn JavaScript, code editor, browser IDE, JS coding practice, Online js compiler, js editor, JS editor, practice js, practice codeing, practice javascript"
+      content="JS Runner, online JavaScript compiler, run JavaScript online, JavaScript editor online, online JS IDE, JavaScript playground, JavaScript code runner, browser JavaScript editor, free JavaScript compiler, online JavaScript executor, JavaScript practice online, learn JavaScript online, online coding editor, JS compiler, JavaScript IDE"
     />
     <meta name="author" content="Likhit Verma" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="JS Runner" />
+    <meta property="og:locale" content="en_US" />
     <meta
       property="og:title"
-      content="JavaScript Editor - Online JS IDE for Learning & Practice"
+      content="JS Runner – Free Online JavaScript Compiler &amp; Editor"
     />
     <meta
       property="og:description"
-      content="Practice JavaScript coding online with a lightweight, browser-based JavaScript editor. Format your code, view console output, and learn JS efficiently."
+      content="Write and run JavaScript instantly in your browser. Free online JS compiler with live console output, syntax highlighting, error detection, and code formatting."
     />
-    <meta property="og:image" content="/images/favicon.png" />
-    <meta property="og:url" content="https://www.jsrunner.com" />
+    <meta property="og:image" content="https://www.jsrunner.com/images/main-logo.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="https://www.jsrunner.com/" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@jsrunner" />
     <meta
-      property="twitter:title"
-      content="JavaScript Editor - Fastest JS IDE for Learning & Practice"
+      name="twitter:title"
+      content="JS Runner - Free Online JavaScript Compiler &amp; Editor"
     />
     <meta
-      property="twitter:description"
-      content="Practice JavaScript coding online with a lightweight, browser-based JavaScript editor. Format your code, view console output, and learn JS efficiently."
+      name="twitter:description"
+      content="Write and run JavaScript instantly in your browser. Free online JS compiler with live console output, syntax highlighting, error detection, and code formatting."
     />
-    <meta property="twitter:image" content="/images/favicon.png" />
+    <meta name="twitter:image" content="https://www.jsrunner.com/images/main-logo.png" />
 
     <!-- Favicon -->
     <link rel="icon" href="/images/favicon.png" type="image/png" />
@@ -88,13 +93,41 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
+        "@type": "WebApplication",
         "name": "JS Runner",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Web",
+        "alternateName": ["JSRunner", "JS Runner Online", "JavaScript Runner"],
         "url": "https://www.jsrunner.com/",
-        "description": "JS Runner a Online JavaScript compiler to write, run, and debug JS code instantly.",
+        "description": "JS Runner is a free online JavaScript compiler and editor. Write, run, and debug JavaScript code directly in your browser with syntax highlighting, real-time console output, error line detection, and Prettier code formatting.",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "JavaScript IDE",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires a modern web browser with JavaScript enabled.",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "featureList": [
+          "Run JavaScript online",
+          "Real-time console output",
+          "Syntax highlighting",
+          "Error line detection and highlighting",
+          "Code formatting with Prettier",
+          "Dark and light theme",
+          "Resizable editor and console panels",
+          "Code persistence across sessions",
+          "Keyboard shortcuts",
+          "Mobile responsive design"
+        ],
+        "screenshot": "https://www.jsrunner.com/images/main-logo.png",
         "author": {
+          "@type": "Person",
+          "name": "Likhit Verma",
+          "url": "https://www.linkedin.com/in/likhit-verma-cs/"
+        },
+        "publisher": {
           "@type": "Person",
           "name": "Likhit Verma"
         }
@@ -117,22 +150,22 @@
                 <h1 class="main-title">JS RUNNER</h1>
               </div>
               <div class="toolbar-right">
-                <button id="runBtn" title="▶ To Run Code (Ctrl + Enter)">
+                <button id="runBtn" title="▶ Run Code (Ctrl + Enter)" aria-label="Run JavaScript code">
                   <i class="fa-solid fa-play fa-beat"></i>
                 </button>
-                <button id="formatBtn" title="To Format Code (Ctrl + `)">
+                <button id="formatBtn" title="Format Code (Ctrl + `)" aria-label="Format code with Prettier">
                   <i class="fa-duotone fa-solid fa-code"></i>
                 </button>
-                <button id="fullScreenBtn" title="For Fullscreen Mode">
+                <button id="fullScreenBtn" title="Toggle Fullscreen" aria-label="Toggle fullscreen mode">
                   <i class="fa-solid fa-expand"></i>
                 </button>
-                <button id="darkModeBtn" title="Toggle Theme">
+                <button id="darkModeBtn" title="Toggle Dark / Light Theme" aria-label="Toggle dark and light theme">
                   <i
                     class="fa-solid fa-moon fa-rotate-by fa-lg"
                     style="--fa-rotate-angle: -25deg"
                   ></i>
                 </button>
-                <button id="resetBtn" title="Reset Editor">
+                <button id="resetBtn" title="Reset Editor to Default" aria-label="Reset editor to default code">
                   <i class="fa-solid fa-arrows-rotate"></i>
                 </button>
               </div>
