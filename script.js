@@ -89,19 +89,40 @@ require(["vs/editor/editor.main"], function () {
     getMonacoConfig({ theme: "dark-modern" })
   );
 
-  // Toggle Dark Mode Theme
+  // Restore code saved from a previous session
+  const savedCode = localStorage.getItem("jsrunner_code");
+  if (savedCode !== null) {
+    editor.setValue(savedCode);
+  }
+
+  // Auto-save code to localStorage on every keystroke.
+  // Must be called again after each editor recreation (e.g. theme toggle).
+  function attachChangeListener() {
+    editor.onDidChangeModelContent(() => {
+      localStorage.setItem("jsrunner_code", editor.getValue());
+    });
+  }
+  attachChangeListener();
+
+  // Toggle Dark Mode Theme — preserves code and re-attaches keyboard shortcuts
   function toggleDarkMode() {
+    const currentCode = editor.getValue();
     isLightTheme = !isLightTheme;
     editor = monaco.editor.create(
       document.getElementById("editor"),
       getMonacoConfig({ theme: isLightTheme ? "vs-light" : "dark-modern" })
     );
+    editor.setValue(currentCode);
+    attachChangeListener();
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Backquote, formatCode);
   }
 
   document.getElementById("darkModeBtn").onclick = toggleDarkMode;
 
   const consoleDiv = document.getElementById("console");
   const clearBtn = document.getElementById("clearBtn");
+  const stopBtn = document.getElementById("stopBtn");
 
   function logToConsole(message, type = "log") {
     const div = document.createElement("div");
@@ -151,7 +172,22 @@ require(["vs/editor/editor.main"], function () {
   // 🧠 Track error decorations
   let errorDecorations = [];
 
-  // Run Code
+  const EXECUTION_TIMEOUT_MS = 5000;
+
+  // Holds the finish() function of the currently running worker (null when idle)
+  let currentFinish = null;
+
+  function stopExecution() {
+    if (currentFinish) {
+      currentFinish();
+      if (statusDiv && consoleDiv.contains(statusDiv)) consoleDiv.removeChild(statusDiv);
+      logToConsole("🛑 Execution halted by user.", "error");
+    }
+  }
+
+  document.getElementById("stopBtn").onclick = stopExecution;
+
+  // Run Code — executes user code in a Web Worker with a 5s timeout
   async function runCode() {
     consoleDiv.innerHTML = "";
     const code = editor.getValue();
@@ -159,33 +195,125 @@ require(["vs/editor/editor.main"], function () {
     errorDecorations = editor.deltaDecorations(errorDecorations, []);
 
     statusDiv = logStatus("🕒 Execution in progress...");
+    stopBtn.disabled = false;
 
-    try {
-      const asyncWrapper = `(async () => { ${code} })()`;
-      await eval(asyncWrapper);
-    } catch (err) {
-      if (statusDiv && consoleDiv.contains(statusDiv)) {
-        consoleDiv.removeChild(statusDiv);
+    // Worker source: overrides console inside the worker and posts messages back.
+    // Output is capped at MAX_LOGS to prevent flooding the main thread's task queue
+    // (which would delay the timeout callback and make termination appear broken).
+    const workerSrc = `
+      let _logCount = 0;
+      const _MAX_LOGS = 5000;
+
+      function _postLog(msg, logType) {
+        if (_logCount >= _MAX_LOGS) return;
+        _logCount++;
+        if (_logCount === _MAX_LOGS) {
+          self.postMessage({ type: 'log', message: '⚠️ Output limit reached (5000 lines). Further logs suppressed.' });
+          return;
+        }
+        self.postMessage({ type: 'log', message: msg, logType: logType });
       }
-      const match = err.stack.match(/<anonymous>:(\d+):(\d+)/);
-      if (match) {
-        const line = parseInt(match[1]);
-        logToConsole(`❌ Error at line ${line}: ${err.message}`, "error");
-        // 🩸 Highlight the error line in Monaco Editor
-        errorDecorations = editor.deltaDecorations(errorDecorations, [
-          {
-            range: new monaco.Range(line, 1, line, 1),
-            options: {
-              isWholeLine: true,
-              className: "errorLineDecoration",
-              glyphMarginClassName: "errorGlyph",
-            },
-          },
-        ]);
-      } else {
-        logToConsole(`❌ ${err.message}`, "error");
+
+      console.log = function(...args) {
+        const msg = args.map(a => {
+          if (typeof a === 'object' && a !== null) {
+            try { return JSON.stringify(a, null, 2); } catch(e) { return '[Circular Object]'; }
+          }
+          return String(a);
+        }).join(' ');
+        _postLog(msg, 'log');
+      };
+      console.error = function(...args) {
+        _postLog(args.map(String).join(' '), 'error');
+      };
+      console.warn = function(...args) {
+        _postLog(args.map(String).join(' '), 'warn');
+      };
+      self.onunhandledrejection = function(e) {
+        const err = e.reason;
+        self.postMessage({ type: 'error', message: err && err.message ? err.message : String(err), line: null });
+      };
+      self.onmessage = async function(e) {
+        const code = e.data;
+        try {
+          await eval('(async () => {\\n' + code + '\\n})()');
+          self.postMessage({ type: 'done' });
+        } catch(err) {
+          const stack = (err && err.stack) || '';
+          let line = null, m;
+          m = stack.match(/<anonymous>:(\\d+):(\\d+)/);
+          if (m) line = parseInt(m[1]) - 1;
+          if (!line) { m = stack.match(/@debugger eval code:(\\d+)/i); if (m) line = parseInt(m[1]) - 1; }
+          if (!line) { m = stack.match(/anonymous:(\\d+)/i); if (m) line = parseInt(m[1]) - 1; }
+          if (!line) { m = stack.match(/eval code:(\\d+)/i); if (m) line = parseInt(m[1]) - 1; }
+          self.postMessage({ type: 'error', message: err.message, line: line > 0 ? line : null });
+        }
+      };
+    `;
+
+    return new Promise((resolve) => {
+      const blob = new Blob([workerSrc], { type: "application/javascript" });
+      const workerUrl = URL.createObjectURL(blob);
+      const worker = new Worker(workerUrl);
+      let settled = false;
+
+      function finish() {
+        if (settled) return;
+        settled = true;
+        currentFinish = null;
+        stopBtn.disabled = true;
+        clearTimeout(timer);
+        worker.terminate();
+        URL.revokeObjectURL(workerUrl);
+        resolve();
       }
-    }
+
+      currentFinish = finish;
+
+      const timer = setTimeout(() => {
+        finish();
+        if (statusDiv && consoleDiv.contains(statusDiv)) consoleDiv.removeChild(statusDiv);
+        logToConsole("⏱️ Execution timed out (5s). Check for infinite loops.", "error");
+      }, EXECUTION_TIMEOUT_MS);
+
+      worker.onmessage = function (e) {
+        const { type, message, logType, line } = e.data;
+        if (type === "log") {
+          if (statusDiv && consoleDiv.contains(statusDiv)) consoleDiv.removeChild(statusDiv);
+          logToConsole(message, logType || "log");
+        } else if (type === "error") {
+          finish();
+          if (statusDiv && consoleDiv.contains(statusDiv)) consoleDiv.removeChild(statusDiv);
+          if (line) {
+            logToConsole(`❌ Error at line ${line}: ${message}`, "error");
+            errorDecorations = editor.deltaDecorations(errorDecorations, [
+              {
+                range: new monaco.Range(line, 1, line, 1),
+                options: {
+                  isWholeLine: true,
+                  className: "errorLineDecoration",
+                  glyphMarginClassName: "errorGlyph",
+                },
+              },
+            ]);
+          } else {
+            logToConsole(`❌ ${message}`, "error");
+          }
+        } else if (type === "done") {
+          finish();
+          if (statusDiv && consoleDiv.contains(statusDiv)) consoleDiv.removeChild(statusDiv);
+          logStatus("✅ Execution complete.");
+        }
+      };
+
+      worker.onerror = function (e) {
+        finish();
+        if (statusDiv && consoleDiv.contains(statusDiv)) consoleDiv.removeChild(statusDiv);
+        logToConsole(`❌ ${e.message}`, "error");
+      };
+
+      worker.postMessage(code);
+    });
   }
 
   document.getElementById("runBtn").onclick = runCode;
@@ -194,12 +322,15 @@ require(["vs/editor/editor.main"], function () {
   function resetEditor() {
     consoleDiv.innerHTML = "";
     editor.setValue(defaultEditorValue);
+    localStorage.removeItem("jsrunner_code");
   }
 
   document.getElementById("resetBtn").onclick = resetEditor;
 
   // 🛡️ Catch global synchronous errors
   window.onerror = function (message, source, lineno, colno, error) {
+    // ResizeObserver loop is a browser-internal notification, not user code error — ignore it
+    if (typeof message === "string" && message.includes("ResizeObserver")) return true;
     if (statusDiv && consoleDiv.contains(statusDiv)) {
       consoleDiv.removeChild(statusDiv);
     }
@@ -207,20 +338,26 @@ require(["vs/editor/editor.main"], function () {
     return true; // prevent default browser logging
   };
 
-  // 🛡️ Catch global async (Promise) errors
+  // 🛡️ Catch global async (Promise) errors — cross-browser stack parsing
   window.onunhandledrejection = function (event) {
     if (statusDiv && consoleDiv.contains(statusDiv)) {
       consoleDiv.removeChild(statusDiv);
     }
     const error = event.reason;
     if (error && error.stack) {
-      const match = error.stack.match(/<anonymous>:(\d+):(\d+)/);
-      if (match) {
-        const line = parseInt(match[1]);
-        logToConsole(
-          `❌ Async Error at line ${line}: ${error.message}`,
-          "error"
-        );
+      let line = null, m;
+      // Chrome/Edge: <anonymous>:N:M
+      m = error.stack.match(/<anonymous>:(\d+):(\d+)/);
+      if (m) line = parseInt(m[1]) - 1;
+      // Firefox: @debugger eval code:N:M
+      if (!line) { m = error.stack.match(/@debugger eval code:(\d+)/i); if (m) line = parseInt(m[1]) - 1; }
+      // Firefox fallback: anonymous:N:M
+      if (!line) { m = error.stack.match(/anonymous:(\d+)/i); if (m) line = parseInt(m[1]) - 1; }
+      // Safari: eval code:N:M
+      if (!line) { m = error.stack.match(/eval code:(\d+)/i); if (m) line = parseInt(m[1]) - 1; }
+
+      if (line && line > 0) {
+        logToConsole(`❌ Async Error at line ${line}: ${error.message}`, "error");
       } else {
         logToConsole(`❌ Async Error: ${error.message || error}`, "error");
       }
@@ -254,10 +391,12 @@ require(["vs/editor/editor.main"], function () {
   // fullscreen
   function triggerFullScreenEvent() {
     const appElement = document.documentElement;
-    if (appElement) {
-      document.fullscreenElement
-        ? document.exitFullscreen()
-        : appElement.requestFullscreen();
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      appElement.requestFullscreen().catch((err) => {
+        logToConsole(`⚠️ Could not enter fullscreen: ${err.message}`, "error");
+      });
     }
   }
   document.getElementById("fullScreenBtn").onclick = triggerFullScreenEvent;
@@ -273,18 +412,29 @@ require(["vs/editor/editor.main"], function () {
 
   let isResizing = false;
 
+  // Debounced editor layout — avoids ResizeObserver loop by scheduling outside
+  // the current paint cycle. setTimeout(0) creates a new macro-task, breaking
+  // the synchronous ResizeObserver → layout → ResizeObserver chain.
+  let _layoutTimer = null;
+  const scheduleEditorLayout = () => {
+    clearTimeout(_layoutTimer);
+    _layoutTimer = setTimeout(() => editor.layout(), 20);
+  };
+
   const startResize = (e) => {
     isResizing = true;
     document.body.style.userSelect = "none";
     document.body.style.cursor =
       window.innerWidth <= 768 ? "ns-resize" : "ew-resize";
-    e.preventDefault();
+    // Guard: Touch objects don't have preventDefault — only Events do
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
   };
 
   const stopResize = () => {
     isResizing = false;
     document.body.style.cursor = "default";
     document.body.style.userSelect = "auto";
+    divider.classList.remove("active");
   };
 
   const handleResize = (clientX, clientY) => {
@@ -300,7 +450,8 @@ require(["vs/editor/editor.main"], function () {
         consoleContainer.style.height = totalHeight - editorHeight - 6 + "px";
         editorDiv.style.width = "100%";
         consoleContainer.style.width = "100%";
-        editor.layout();
+        // Defer layout to next frame to avoid ResizeObserver loop errors
+        scheduleEditorLayout();
       }
     } else {
       // Desktop: horizontal resize
@@ -312,7 +463,7 @@ require(["vs/editor/editor.main"], function () {
         consoleContainer.style.width = totalWidth - editorWidth - 6 + "px";
         editorDiv.style.height = "100%";
         consoleContainer.style.height = "100%";
-        editor.layout();
+        scheduleEditorLayout();
       }
     }
   };
@@ -324,12 +475,15 @@ require(["vs/editor/editor.main"], function () {
   );
   window.addEventListener("mouseup", stopResize);
 
-  // Touch events (mobile)
+  // Touch events (mobile) — passive: false required for preventDefault to work
   divider.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    divider.classList.add("active");
     startResize(e.touches[0]);
-  });
+  }, { passive: false });
   window.addEventListener("touchmove", (e) => {
+    if (isResizing) e.preventDefault(); // block page scroll while resizing
     handleResize(e.touches[0].clientX, e.touches[0].clientY);
-  });
+  }, { passive: false });
   window.addEventListener("touchend", stopResize);
 });
